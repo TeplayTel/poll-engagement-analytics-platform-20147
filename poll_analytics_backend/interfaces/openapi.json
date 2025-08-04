@@ -1,0 +1,668 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Poll Engagement Analytics API",
+    "description": "\nAPI for Poll Engagement Analytics Platform.\n\n* Log poll events (impressions, votes).\n* Deduplication based on event_id.\n* Capture device/platform/session metadata.\n* Analytics endpoints for powerful filtering and breakdowns.\n* Get poll analytics summary metrics.\n\nAll endpoints are well-documented for easy frontend and BI consumption.\n",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health Check",
+        "description": "PUBLIC_INTERFACE: Verify that the analytics service is operational.",
+        "operationId": "health_check__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fanEngage/analytics/v1/event": {
+      "post": {
+        "tags": [
+          "Event Logging"
+        ],
+        "summary": "Log a poll event",
+        "description": "Log an impression, vote, or poll event from the frontend, with deduplication enforced on event_id.\nCaptures full device/platform/session/user metadata.",
+        "operationId": "log_poll_event_fanEngage_analytics_v1_event_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PollEventIn",
+                "description": "Event object with pollId, eventId, device metadata, etc."
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventLogResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fanEngage/analytics/v1/query": {
+      "post": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Query poll events (advanced filter)",
+        "description": "Return filtered analytics event logs, including device/platform metadata, for detailed analytics and dashboards.",
+        "operationId": "analytics_query_fanEngage_analytics_v1_query_post",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventFilter",
+                "description": "Filter parameters for pollId, event_type, user_id, date range, etc."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsQueryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fanEngage/analytics/v1/pollSummary": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Poll analytics summary metrics",
+        "description": "Returns high-level analytics summary for a given poll, including:\n- Total unique impressions, votes\n- Vote distribution\n- Device, platform, geo breakdown\n- First/last event timestamp",
+        "operationId": "poll_summary_fanEngage_analytics_v1_pollSummary_get",
+        "parameters": [
+          {
+            "name": "poll_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Poll id to fetch analytics for",
+              "title": "Poll Id"
+            },
+            "description": "Poll id to fetch analytics for"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PollAnalyticsSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalyticsQueryResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/PollEventDb"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events",
+          "total_count"
+        ],
+        "title": "AnalyticsQueryResponse",
+        "description": "Detailed event query response, for list endpoints."
+      },
+      "EventFilter": {
+        "properties": {
+          "poll_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poll Id",
+            "description": "Filter by poll id"
+          },
+          "event_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Type",
+            "description": "Filter by event type"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id",
+            "description": "Filter by event id (for debugging)"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id",
+            "description": "Filter by user/account id"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time",
+            "description": "Start timestamp filter"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time",
+            "description": "End timestamp filter"
+          }
+        },
+        "type": "object",
+        "title": "EventFilter",
+        "description": "Filter criteria for querying poll events/analytics."
+      },
+      "EventLogResponse": {
+        "properties": {
+          "deduplicated": {
+            "type": "boolean",
+            "title": "Deduplicated",
+            "description": "Was this event a duplicate (deduped)?"
+          },
+          "stored": {
+            "type": "boolean",
+            "title": "Stored",
+            "description": "Was this event logged in db?"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "If not stored or deduped, explains why."
+          }
+        },
+        "type": "object",
+        "required": [
+          "deduplicated",
+          "stored"
+        ],
+        "title": "EventLogResponse",
+        "description": "API response after event ingestion"
+      },
+      "EventMetadata": {
+        "properties": {
+          "device_type": {
+            "type": "string",
+            "title": "Device Type",
+            "description": "Device type, e.g. mobile, desktop, tv"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform",
+            "description": "Platform identifier, e.g. ios, android, web, smarttv"
+          },
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version",
+            "description": "App or frontend version"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id",
+            "description": "User account or system identifier."
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id",
+            "description": "Unique or semi-unique session hash."
+          },
+          "geo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo",
+            "description": "ISO country code or city if available."
+          },
+          "additional": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additional",
+            "description": "Other auxiliary metadata as submitted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_type",
+          "platform",
+          "session_id"
+        ],
+        "title": "EventMetadata",
+        "description": "Device, platform, and session metadata attached to an event."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PollAnalyticsSummary": {
+        "properties": {
+          "poll_id": {
+            "type": "string",
+            "title": "Poll Id",
+            "description": "Poll id the summary describes"
+          },
+          "total_impressions": {
+            "type": "integer",
+            "title": "Total Impressions",
+            "description": "Number of unique impressions"
+          },
+          "total_votes": {
+            "type": "integer",
+            "title": "Total Votes",
+            "description": "Number of unique votes"
+          },
+          "participants": {
+            "type": "integer",
+            "title": "Participants",
+            "description": "Unique participants (votes)"
+          },
+          "vote_distribution": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Vote Distribution",
+            "description": "Vote counts by option"
+          },
+          "device_breakdown": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Device Breakdown",
+            "description": "Events by device type"
+          },
+          "platform_breakdown": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Platform Breakdown",
+            "description": "Events by platform"
+          },
+          "geo_breakdown": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Geo Breakdown",
+            "description": "Events by geo region (if present)"
+          },
+          "first_event_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Event At",
+            "description": "First event for poll"
+          },
+          "last_event_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Event At",
+            "description": "Last event for poll"
+          }
+        },
+        "type": "object",
+        "required": [
+          "poll_id",
+          "total_impressions",
+          "total_votes",
+          "participants",
+          "vote_distribution",
+          "device_breakdown",
+          "platform_breakdown",
+          "geo_breakdown"
+        ],
+        "title": "PollAnalyticsSummary",
+        "description": "High-level analytics summary result for a poll."
+      },
+      "PollEventDb": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "title": "Event Id",
+            "description": "Unique event (impression/vote) id for deduplication."
+          },
+          "poll_id": {
+            "type": "string",
+            "title": "Poll Id",
+            "description": "The poll's unique id."
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type",
+            "description": "impression | vote | abandonment (custom types allowed)"
+          },
+          "user_choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Choice",
+            "description": "If voting, contains the choice voted for."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp",
+            "description": "Datetime of the event as reported by the client."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/EventMetadata",
+            "description": "Device/platform/session info and more."
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Backend-generated record id (primary key)"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At",
+            "description": "Time received by backend (system clock)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "poll_id",
+          "event_type",
+          "timestamp",
+          "metadata",
+          "id",
+          "received_at"
+        ],
+        "title": "PollEventDb",
+        "description": "Stored poll event in database (with database received/processed time)."
+      },
+      "PollEventIn": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "title": "Event Id",
+            "description": "Unique event (impression/vote) id for deduplication."
+          },
+          "poll_id": {
+            "type": "string",
+            "title": "Poll Id",
+            "description": "The poll's unique id."
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type",
+            "description": "impression | vote | abandonment (custom types allowed)"
+          },
+          "user_choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Choice",
+            "description": "If voting, contains the choice voted for."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp",
+            "description": "Datetime of the event as reported by the client."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/EventMetadata",
+            "description": "Device/platform/session info and more."
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "poll_id",
+          "event_type",
+          "timestamp",
+          "metadata"
+        ],
+        "title": "PollEventIn",
+        "description": "Incoming poll event submission from frontend."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Event Logging",
+      "description": "Log poll events (impressions, votes) with dedup and device/session metadata"
+    },
+    {
+      "name": "Analytics",
+      "description": "Query events and retrieve poll analytics summaries"
+    }
+  ]
+}

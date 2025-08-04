@@ -1,0 +1,4 @@
+{
+    "command": "pytest",
+    "working_directory": "/home/kavia/workspace/code-generation/poll-engagement-analytics-platform-20147/poll_analytics_backend"
+}
